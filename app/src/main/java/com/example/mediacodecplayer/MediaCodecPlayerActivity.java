@@ -8,6 +8,7 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
+import android.view.View;
 
 import androidx.activity.EdgeToEdge;
 import androidx.annotation.NonNull;
@@ -19,9 +20,11 @@ import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.io.IOException;
+
 public class MediaCodecPlayerActivity extends AppCompatActivity {
     private static final int REQUEST_CODE_STORAGE = 100;
     String TAG = "SampleActivity";
+    private Mp4Player player;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,7 +45,7 @@ public class MediaCodecPlayerActivity extends AppCompatActivity {
                     AssetFileDescriptor afd = getResources().openRawResourceFd(R.raw.sample);
 
                     try {
-                        Mp4Player player = new Mp4Player("/sdcard/sample.mp4", holder.getSurface());
+                        player = new Mp4Player("/sdcard/sample.mp4", holder.getSurface());
                         player.play(afd);
                         afd.close();
                     } catch (IOException e) {
@@ -59,7 +62,31 @@ public class MediaCodecPlayerActivity extends AppCompatActivity {
             public void surfaceDestroyed(SurfaceHolder h) {
             }
         });
+        findViewById(R.id.btnPlay).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (player.isPaused()) {
+                    player.resume();
+                } else {
+                    player.pause();
+                }
+
+            }
+        });
+        findViewById(R.id.forward).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
+        findViewById(R.id.backward).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+            }
+        });
     }
+
     private void requestStoragePermission() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             // Android 13+ — use granular media permissions

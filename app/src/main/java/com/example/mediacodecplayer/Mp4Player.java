@@ -17,6 +17,10 @@ public class Mp4Player {
     private MediaExtractor extractor;
     private MediaCodec decoder;
 
+    private volatile boolean isPaused = false;
+    private volatile boolean isStopped = false;
+    private final Object lock = new Object();
+
     public Mp4Player(String filePath, Surface surface) {
         this.filePath = filePath;
         this.surface = surface;
@@ -60,7 +64,22 @@ public class Mp4Player {
         boolean outputDone = false;
         long timeoutUs = 10_000;
         int index = 0;
-        while (!outputDone) {
+
+        while (!outputDone && !isStopped) {
+
+            // Pause check
+            synchronized (lock) {
+                while (isPaused && !isStopped) {
+                    try {
+                        lock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+            }
+            if (isStopped) break;
+
             // Feed input
             if (!inputDone) {
                 Log.d(TAG, "decode: " + index);
@@ -85,7 +104,8 @@ public class Mp4Player {
             // Drain output
             int outputIndex = decoder.dequeueOutputBuffer(bufferInfo, timeoutUs);
             if (outputIndex >= 0) {
-                boolean render = bufferInfo.size > 0;
+                boolean isConfig = (bufferInfo.flags & MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0;
+                boolean render = !isConfig && bufferInfo.size > 0;
                 decoder.releaseOutputBuffer(outputIndex, render);
 
                 if ((bufferInfo.flags & MediaCodec.BUFFER_FLAG_END_OF_STREAM) != 0) {
@@ -95,6 +115,26 @@ public class Mp4Player {
         }
 
         release();
+    }
+
+    public boolean isPaused() {
+        return isPaused;
+    }
+
+    public void pause() {
+        isPaused = true;
+    }
+
+    public void resume() {
+        isPaused = false;
+        synchronized (lock) {
+            lock.notifyAll();
+        }
+    }
+
+    public void stop() {
+        isStopped = true;
+        resume(); // unblock if waiting
     }
 
     public void release() {
@@ -108,4 +148,5 @@ public class Mp4Player {
             extractor = null;
         }
     }
+
 }
